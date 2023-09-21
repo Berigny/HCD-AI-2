@@ -1,9 +1,7 @@
-import streamlit as st
-import docx
-import PyPDF2
-from pptx import Presentation
 import re
+
 import openai
+import streamlit as st
 
 # Set up OpenAI API key from Streamlit secrets
 openai.api_key = st.secrets["openai_key"]
