@@ -1,11 +1,70 @@
-# Grouping all imports at the top
 import streamlit as st
 import docx
 import PyPDF2
 from pptx import Presentation
 import re
 
-# sfdsf
+# File extraction functions with caching
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def extract_text_from_txt(file):
+    try:
+        return file.getvalue().decode('utf-8')
+    except Exception as e:
+        st.error(f"Error processing text file. Error: {e}")
+        return None
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def extract_text_from_docx(file):
+    try:
+        doc = docx.Document(file)
+        return ' '.join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        st.error(f"Error processing docx file. Error: {e}")
+        return None
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def extract_text_from_pdf(file):
+    try:
+        pdf_reader = PyPDF2.PdfFileReader(file)
+        text = ""
+        for page_num in range(pdf_reader.numPages):
+            text += pdf_reader.getPage(page_num).extractText()
+        return text
+    except Exception as e:
+        st.error(f"Error processing pdf file. Error: {e}")
+        return None
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def extract_text_from_ppt(file):
+    try:
+        prs = Presentation(file)
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text
+        return text
+    except Exception as e:
+        st.error(f"Error processing ppt file. Error: {e}")
+        return None
+
+@st.cache(allow_output_mutation=True, suppress_st_warning=True)
+def extract_text(file):
+    try:
+        if file.type == "text/plain":
+            return extract_text_from_txt(file)
+        elif file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            return extract_text_from_docx(file)
+        elif file.type == "application/pdf":
+            return extract_text_from_pdf(file)
+        elif file.type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+            return extract_text_from_ppt(file)
+        else:
+            return None
+    except Exception as e:
+        st.error(f"Error processing {file.name}. Error: {e}")
+        return None
+
 st.title("Transcript Analysis Tool")
 
 uploaded_files = st.file_uploader(
@@ -14,8 +73,6 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
-
-# ... [keep your functions here without any change] ...
 
 # Dictionary to store text content for each uploaded file
 file_contents = {}
@@ -43,5 +100,3 @@ if guiding_questions:
             matches = re.findall(keyword, text_content, re.IGNORECASE)
             if matches:
                 st.write(f"Found {len(matches)} instances of '{keyword}' in {file_name}.")
-
-
