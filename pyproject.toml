@@ -6,6 +6,11 @@ authors = ["Your Name <you@example.com>"]
 
 [tool.poetry.dependencies]
 python = ">=3.10.0,<3.11"
+docx = "^0.2.4"
+openai = "^0.28.0"
+pypdf2 = "^3.0.1"
+python-pptx = "^0.6.22"
+streamlit = "^1.27.0"
 
 [tool.pyright]
 # https://github.com/microsoft/pyright/blob/main/docs/configuration.md
