@@ -7,7 +7,7 @@ import os
 import openai
 
 # Get OpenAI key from Streamlit's secrets
-OPENAI_KEY = st.secrets["openai_key"]
+OPENAI_KEY = st.secrets["OPENAI_KEY"]
 
 # Check if the key was fetched correctly
 if not OPENAI_KEY:
