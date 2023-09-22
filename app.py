@@ -6,16 +6,17 @@ import re
 import openai
 import os
 
-# Try getting OpenAI API key from Streamlit secrets
-try:
+# Check for OpenAI API key in Streamlit secrets
+if "openai_key" in st.secrets:
     openai.api_key = st.secrets["openai_key"]
-except KeyError:
-    # If that fails, fetch the key from Replit's environment variable
+else:
+    # If not found in Streamlit secrets, fetch the key from Replit's environment variable
     OPENAI_KEY = os.getenv("OPENAI_KEY")
     if OPENAI_KEY:
         openai.api_key = OPENAI_KEY
     else:
         st.error("OpenAI API key not found in both Streamlit secrets and Replit's environment variables.")
+
 
 # Constants
 MAX_TOKENS = 200
