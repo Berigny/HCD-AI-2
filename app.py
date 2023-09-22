@@ -3,19 +3,19 @@ import docx
 import PyPDF2
 from pptx import Presentation
 import re
-import openai
 import os
+import openai
 
-# Check for OpenAI API key in Streamlit secrets
-if "openai_key" in st.secrets:
-    openai.api_key = st.secrets["openai_key"]
-else:
-    # If not found in Streamlit secrets, fetch the key from Replit's environment variable
-    OPENAI_KEY = os.getenv("OPENAI_KEY")
-    if OPENAI_KEY:
-        openai.api_key = OPENAI_KEY
-    else:
-        st.error("OpenAI API key not found in both Streamlit secrets and Replit's environment variables.")
+# Get OpenAI key from Replit's environment variable
+OPENAI_KEY = os.getenv("OPENAI_KEY")
+
+# Check if the key was fetched correctly
+if not OPENAI_KEY:
+    raise ValueError("Failed to get the OpenAI key from environment variables.")
+
+# Set the OpenAI API key
+openai.api_key = OPENAI_KEY
+
 
 
 # Constants
