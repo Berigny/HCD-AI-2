@@ -1,6 +1,5 @@
 streamlit
 openai
-pymupdf
 pypdf2
 python-pptx
 python-docx
