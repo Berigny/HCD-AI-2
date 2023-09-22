@@ -6,12 +6,15 @@ import re
 import os
 import openai
 
+# Detect the environment and fetch the OpenAI key accordingly
 if "REPLIT" in os.environ:
     # We're running on Replit
+    st.write("Detected Replit environment.")
     OPENAI_KEY = os.getenv("OPENAI_KEY")
 else:
     # Assume we're running on Streamlit Cloud
-    OPENAI_KEY = st.secrets["OPENAI_KEY"]
+    st.write("Assuming Streamlit Cloud environment.")
+    OPENAI_KEY = st.secrets.get("OPENAI_KEY")
 
 # Check if the key was fetched correctly
 if not OPENAI_KEY:
