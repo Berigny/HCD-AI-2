@@ -11,42 +11,6 @@ def query_openai(api_key, messages):
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response.choices[0].message["content"]
 
-def main():
-    st.title("OpenAI Query Interface")
-
-    api_key = st.text_input("API Key", type="password")
-    user_message = st.text_area("Your Message")
-
-    if st.button("Submit"):
-        if not api_key:
-            st.error("Please provide an API Key.")
-            return
-
-        if not user_message:
-            st.error("Please provide a message.")
-            return
-
-        messages = [
-            {"role": "assistant", "content": "How can I assist you today?"},
-            {"role": "user", "content": user_message}
-        ]
-
-        with st.spinner("Querying OpenAI..."):
-            answer = query_openai(api_key, messages)
-
-        st.markdown(f"**Answer:** {answer}")
-
-if __name__ == "__main__":
-    main()
-
-
-# Constants
-MAX_TOKENS = 200
-SEGMENT_SIZE = 1000
-SNIPPET_LENGTH = 50  # Number of characters to show before and after a keyword match
-
-# File extraction functions
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def extract_text_from_txt(file):
     try:
         return file.getvalue().decode('utf-8')
@@ -54,7 +18,6 @@ def extract_text_from_txt(file):
         st.error(f"Error processing text file. Error: {e}")
         return None
 
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def extract_text_from_docx(file):
     try:
         doc = docx.Document(file)
@@ -63,7 +26,6 @@ def extract_text_from_docx(file):
         st.error(f"Error processing docx file. Error: {e}")
         return None
 
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def extract_text_from_pdf(file):
     try:
         pdf_reader = PyPDF2.PdfFileReader(file)
@@ -75,7 +37,6 @@ def extract_text_from_pdf(file):
         st.error(f"Error processing pdf file. Error: {e}")
         return None
 
-@st.cache(allow_output_mutation=True, suppress_st_warning=True)
 def extract_text_from_ppt(file):
     try:
         prs = Presentation(file)
@@ -141,7 +102,14 @@ def extract_insights(text):
     
     return insights.strip()
 
+# Constants
+MAX_TOKENS = 200
+SEGMENT_SIZE = 1000
+SNIPPET_LENGTH = 50
+
 st.title("Transcript Analysis Tool")
+
+api_key = st.text_input("API Key", type="password")  # Moved API Key input here
 
 uploaded_files = st.file_uploader(
     "Choose transcript files (.txt, .docx, .pdf, .ppt)",
