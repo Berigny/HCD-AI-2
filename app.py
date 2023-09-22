@@ -6,16 +6,19 @@ import re
 import os
 import openai
 
-# Get OpenAI key from Replit's environment variable
-OPENAI_KEY = os.getenv("OPENAI_KEY")
+# Remove the os.environ print loop as you don't want to print out environment variables on a public web app
+# for key, value in os.environ.items():
+#     print(f"{key}: {value}")
+
+# Get OpenAI key from Streamlit's secrets
+OPENAI_KEY = st.secrets["OPENAI_KEY"]
 
 # Check if the key was fetched correctly
 if not OPENAI_KEY:
-    raise ValueError("Failed to get the OpenAI key from environment variables.")
+    raise ValueError("Failed to get the OpenAI key from Streamlit's secrets.")
 
 # Set the OpenAI API key
 openai.api_key = OPENAI_KEY
-
 
 
 # Constants
