@@ -6,19 +6,38 @@ import re
 import os
 import openai
 
-# Detect the environment and fetch the OpenAI key accordingly
-if "REPLIT" in os.environ:
-    # We're running on Replit
-    st.write("Detected Replit environment.")
-    OPENAI_KEY = os.getenv("OPENAI_KEY")
-else:
-    # Assume we're running on Streamlit Cloud
-    st.write("Assuming Streamlit Cloud environment.")
-    OPENAI_KEY = st.secrets.get("OPENAI_KEY")
+def query_openai(api_key, messages):
+    openai.api_key = api_key
+    response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+    return response.choices[0].message["content"]
 
-# Check if the key was fetched correctly
-if not OPENAI_KEY:
-    raise ValueError("Failed to get the OpenAI key.")
+def main():
+    st.title("OpenAI Query Interface")
+
+    api_key = st.text_input("API Key", type="password")
+    user_message = st.text_area("Your Message")
+
+    if st.button("Submit"):
+        if not api_key:
+            st.error("Please provide an API Key.")
+            return
+
+        if not user_message:
+            st.error("Please provide a message.")
+            return
+
+        messages = [
+            {"role": "assistant", "content": "How can I assist you today?"},
+            {"role": "user", "content": user_message}
+        ]
+
+        with st.spinner("Querying OpenAI..."):
+            answer = query_openai(api_key, messages)
+
+        st.markdown(f"**Answer:** {answer}")
+
+if __name__ == "__main__":
+    main()
 
 
 # Constants
@@ -130,23 +149,24 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
-# Check for large files
-for uploaded_file in uploaded_files:
-    if uploaded_file.size > 10e6:  # E.g., 10 MB
-        st.error(f"{uploaded_file.name} is too large. Please upload smaller files.")
-        uploaded_files.remove(uploaded_file)
+# New file size check and filtering
+accepted_files = [file for file in uploaded_files if file.size <= 10e6]  # 10 MB limit
+rejected_files = [file for file in uploaded_files if file.size > 10e6]
+
+for rejected_file in rejected_files:
+    st.error(f"{rejected_file.name} is too large. Please upload smaller files.")
 
 guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
 
-# Dictionary to store text content for each uploaded file
+# Dictionary to store text content for each accepted file
 file_contents = {}
 
-if uploaded_files:
+if accepted_files:
     with st.expander("Uploaded Files & Previews"):  # Updated to use expander
-        for uploaded_file in uploaded_files:
-            text_content = extract_text(uploaded_file)
-            file_contents[uploaded_file.name] = text_content
-            st.write(f"Contents of {uploaded_file.name}: {text_content[:500]}...")
+        for accepted_file in accepted_files:
+            text_content = extract_text(accepted_file)
+            file_contents[accepted_file.name] = text_content
+            st.write(f"Contents of {accepted_file.name}: {text_content[:500]}...")
 
 if guiding_questions:
     with st.expander("Keyword Matches"):
