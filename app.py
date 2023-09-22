@@ -6,12 +6,8 @@ import re
 import os
 import openai
 
-# Remove the os.environ print loop as you don't want to print out environment variables on a public web app
-# for key, value in os.environ.items():
-#     print(f"{key}: {value}")
-
 # Get OpenAI key from Streamlit's secrets
-OPENAI_KEY = st.secrets["OPENAI_KEY"]
+OPENAI_KEY = st.secrets["openai_key"]
 
 # Check if the key was fetched correctly
 if not OPENAI_KEY:
