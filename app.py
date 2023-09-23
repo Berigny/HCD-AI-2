@@ -58,6 +58,8 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
+# Apply caching to the analyze_text function
+@st.cache(show_spinner=False)
 def analyze_text(text):
     # Assume a function to analyze text and return the formatted result
     # Replace with your actual analysis logic
