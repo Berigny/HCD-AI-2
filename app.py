@@ -47,6 +47,28 @@ def extract_text(uploaded_file):
     else:
         st.error(f"File type not supported: {uploaded_file.type}")
 
+# Function to extract insights from text
+def extract_insights(text):
+    try:
+        # Trim the text if it's too long
+        if len(text) > 4000:
+            trimmed_text = text[:4000]  # This is a naive trim
+            st.warning("The text has been truncated for analysis.")
+        else:
+            trimmed_text = text
+
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {
+                "role": "user",
+                "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {trimmed_text}"
+            }
+        ]
+        insights = query_openai(api_key, messages)  # updated line
+        return insights
+    except Exception as e:
+        st.error(f"OpenAI API error: {e}")
+
 # Streamlit app UI
 st.title("Transcript Analysis Tool")
 
@@ -58,17 +80,6 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
-guiding_questions = st.text_area("Guiding Questions", "What guiding questions or themes are you interested in?")
-
-def analyze_text(text, questions):
-    # Incorporate guiding questions into the analysis request
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}. Guiding questions: {questions}"}
-    ]
-    analysis = query_openai(api_key, messages)
-    return analysis
-
 # Button to initiate the analysis
 if st.button("Submit") and uploaded_files:
     with st.spinner("Processing..."):
@@ -76,8 +87,8 @@ if st.button("Submit") and uploaded_files:
         consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
         # Get analysis result
-        analysis_result = analyze_text(consolidated_text, guiding_questions)
-        
+        analysis_result = extract_insights(consolidated_text)
+
         # Assume the analysis result is formatted with newline separation for each section
         summary, customer_segments, pain_points, opportunities, insights = analysis_result.split('\n')
 
