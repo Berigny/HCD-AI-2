@@ -9,7 +9,7 @@ from docx import Document
 
 # OpenAI API Call
 def query_openai(api_key, messages):
-    openai.api_key = api_key
+    openai.api_key = api_key  # Utilizing the passed api_key
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response.choices[0].message["content"]
 
@@ -90,30 +90,31 @@ guiding_questions = st.text_area("Enter the guiding questions or keywords (separ
 # Extracting Insights and Summarizing
 def extract_insights(text):
     try:
-        response = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=f"Summarize the following text and identify customer segments, pain points, and opportunities: {text}",
-            max_tokens=MAX_TOKENS
-        )
-        insights = response.choices[0].text.strip()
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {
+                "role": "user",
+                "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {text}"
+            }
+        ]
+        insights = query_openai(api_key, messages)  # updated line
         return insights
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
 
 def generate_summary(insight):
     try:
-        response = openai.Completion.create(
-            model="text-davinci-003",
-            prompt=f"Expand on the following insight: {insight}",
-            max_tokens=MAX_TOKENS
-        )
-        summary = response.choices[0].text.strip()
+        messages = [
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": f"Expand on the following insight: {insight}"}
+        ]
+        summary = query_openai(api_key, messages)  # updated line
         return summary
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
 
 # Submit button action
-if st.button("Submit", key='submit') and guiding_questions:
+if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
     file_contents = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
 
     with st.expander("Consolidated Insights & Summaries"):
@@ -138,7 +139,7 @@ def export_findings(findings_dict):
     doc.save(doc_path)
     return doc_path
 
-if st.button("Export Findings"):
+if st.button("Export Findings") and uploaded_files:
     findings_dict = {file_name: extract_insights(text_content) for file_name, text_content in file_contents.items()}
     doc_path = export_findings(findings_dict)
     st.download_button(
