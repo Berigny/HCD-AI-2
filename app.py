@@ -2,39 +2,68 @@ import streamlit as st
 import docx
 import PyPDF2
 from pptx import Presentation
+import os
 import openai
 from docx import Document
 from collections import defaultdict
 
-# OpenAI API Call
-def query_openai(api_key, messages):
-    openai.api_key = api_key
-    response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
-    return response.choices[0].message["content"]
-
 # Text Extraction Functions
-# ... (retain the previous text extraction functions)
+def extract_text_from_txt(file):
+    try:
+        return file.getvalue().decode('utf-8')
+    except Exception as e:
+        st.error(f"Error processing text file. Error: {e}")
+        return None
 
-# Analysis Function
-def analyze_text(api_key, text):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Provide a thematic analysis of the following text: {text}"}
-    ]
-    analysis_result = query_openai(api_key, messages)
-    return analysis_result  # Assume the analysis_result is structured as required
+def extract_text_from_docx(file):
+    try:
+        doc = docx.Document(file)
+        return ' '.join([para.text for para in doc.paragraphs])
+    except Exception as e:
+        st.error(f"Error processing docx file. Error: {e}")
+        return None
 
-# Exporting Findings
-def export_findings(analysis_result):
-    doc = Document()
-    doc.add_heading('Consolidated Findings', 0)
-    for key, value in analysis_result.items():
-        doc.add_heading(key, level=1)
-        doc.add_paragraph(value)
+def extract_text_from_pdf(file):
+    try:
+        pdf_reader = PyPDF2.PdfFileReader(file)
+        text = ""
+        for page_num in range(pdf_reader.numPages):
+            text += pdf_reader.getPage(page_num).extractText()
+        return text
+    except Exception as e:
+        st.error(f"Error processing pdf file. Error: {e}")
+        return None
 
-    doc_path = 'findings.docx'
-    doc.save(doc_path)
-    return doc_path
+def extract_text_from_ppt(file):
+    try:
+        prs = Presentation(file)
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text
+        return text
+    except Exception as e:
+        st.error(f"Error processing ppt file. Error: {e}")
+        return None
+
+def extract_text(uploaded_file):
+    try:
+        if uploaded_file.type == "text/plain":
+            return extract_text_from_txt(uploaded_file)
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+            return extract_text_from_docx(uploaded_file)
+        elif uploaded_file.type == "application/pdf":
+            return extract_text_from_pdf(uploaded_file)
+        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+            return extract_text_from_ppt(uploaded_file)
+        else:
+            return None
+    except Exception as e:
+        st.error(f"Error processing {uploaded_file.name}. Error: {e}")
+        return None
+
+# ...rest of your code...
 
 # Streamlit Interface
 st.title("Transcript Analysis Tool")
@@ -46,6 +75,8 @@ uploaded_files = st.file_uploader(
     type=["txt", "docx", "pdf", "ppt"],
     accept_multiple_files=True,
 )
+
+consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
 if st.button("Submit", key='submit') and uploaded_files:
     with st.spinner("Processing..."):
