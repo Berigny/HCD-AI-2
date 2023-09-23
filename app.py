@@ -67,24 +67,21 @@ if st.button("Submit") and uploaded_files:
         # Assume a function analyze_text exists to analyze the consolidated text
         analysis_result = analyze_text(consolidated_text)
         
-        # Assume the analysis result is formatted with newline separation for each section
-        summary, customer_segments, pain_points, opportunities, insights = analysis_result.split('\n')
-
-        # Display each section of the analysis result in separate accordions
+        # Assume the analysis result is a dictionary with separate keys for each section
         with st.expander("Summary"):
-            st.write(summary)
+            st.write(analysis_result['summary'])
 
         with st.expander("Customer Segments"):
-            st.write(customer_segments)
+            st.write(analysis_result['customer_segments'])
 
         with st.expander("Pain Points"):
-            st.write(pain_points)
+            st.write(analysis_result['pain_points'])
 
         with st.expander("Opportunities"):
-            st.write(opportunities)
+            st.write(analysis_result['opportunities'])
 
         with st.expander("Insights"):
-            st.write(insights)
+            st.write(analysis_result['insights'])
 
 def analyze_text(text):
     # Assume a function to analyze text and return the formatted result
@@ -94,4 +91,5 @@ def analyze_text(text):
         {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}"}
     ]
     analysis = query_openai(api_key, messages)
+    # Assume the analysis is returned as a dictionary with keys corresponding to the sections
     return analysis
