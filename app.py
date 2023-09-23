@@ -86,12 +86,15 @@ uploaded_files = st.file_uploader(
 guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
 
 # Adding Streamlit caching to store the results of API calls
-@st.cache(allow_output_mutation=True)
 def extract_insights(text):
     try:
-        # Trim the text if it's too long (simple example, you may want to summarize instead)
-        trimmed_text = text[:4096]  # This is a naive trim, you might want to trim in a more intelligent way
-        
+        # Trim the text if it's too long
+        if len(text) > 4000:
+            trimmed_text = text[:4000]  # This is a naive trim
+            st.warning("The text has been truncated for analysis.")
+        else:
+            trimmed_text = text
+
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
             {
@@ -103,6 +106,8 @@ def extract_insights(text):
         return insights
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
+
+
 
 @st.cache(allow_output_mutation=True)
 def generate_summary(insight):
