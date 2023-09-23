@@ -48,7 +48,7 @@ def extract_text(uploaded_file):
         st.error(f"File type not supported: {uploaded_file.type}")
 
 # Function to extract insights from text
-def extract_insights(text):
+def extract_insights(text, guiding_questions):
     try:
         # Trim the text if it's too long
         if len(text) > 4000:
@@ -62,7 +62,8 @@ def extract_insights(text):
             {
                 "role": "user",
                 "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {trimmed_text}"
-            }
+            },
+            {"role": "user", "content": f"Guiding questions: {guiding_questions}"}
         ]
         insights = query_openai(api_key, messages)  # updated line
         return insights
@@ -72,7 +73,9 @@ def extract_insights(text):
 # Streamlit app UI
 st.title("Transcript Analysis Tool")
 
-api_key = st.text_input("API Key", type="password")
+api_key = st.text_input("API Key", type="password", help=None)  # Removed on-focus help text
+
+guiding_questions = st.text_area("Enter any guiding questions for the analysis:")
 
 uploaded_files = st.file_uploader(
     "Choose transcript files (.txt, .docx, .pdf, .ppt)",
@@ -87,10 +90,13 @@ if st.button("Submit") and uploaded_files:
         consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
         # Get analysis result
-        analysis_result = extract_insights(consolidated_text)
+        analysis_result = extract_insights(consolidated_text, guiding_questions)
+
+        st.write(f"Debug: {analysis_result}")  # add this line to see what's in analysis_result
 
         # Assume the analysis result is formatted with newline separation for each section
-        summary, customer_segments, pain_points, opportunities, insights = analysis_result.split('\n')
+        sections = analysis_result.split('\n')
+        summary, customer_segments, pain_points, opportunities, insights = sections[:5]
 
         # Display each section of the analysis result in separate accordions
         with st.expander("Summary"):
