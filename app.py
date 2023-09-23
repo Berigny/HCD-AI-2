@@ -58,14 +58,15 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
+guiding_questions = st.text_area("Guiding Questions", "What guiding questions or themes are you interested in?")
+
 # Apply caching to the analyze_text function
-@st.cache(show_spinner=False)
-def analyze_text(text):
-    # Assume a function to analyze text and return the formatted result
-    # Replace with your actual analysis logic
+@st.cache(show_spinner=False, hash_funcs={openai.api_resources.abstract.EngineAPICollection: lambda _: None})
+def analyze_text(text, questions):
+    # Incorporate guiding questions into the analysis request
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}"}
+        {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}. Guiding questions: {questions}"}
     ]
     analysis = query_openai(api_key, messages)
     return analysis
@@ -77,7 +78,7 @@ if st.button("Submit") and uploaded_files:
         consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
         # Get analysis result
-        analysis_result = analyze_text(consolidated_text)
+        analysis_result = analyze_text(consolidated_text, guiding_questions)
         
         # Assume the analysis result is formatted with newline separation for each section
         summary, customer_segments, pain_points, opportunities, insights = analysis_result.split('\n')
