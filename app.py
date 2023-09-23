@@ -60,8 +60,6 @@ uploaded_files = st.file_uploader(
 
 guiding_questions = st.text_area("Guiding Questions", "What guiding questions or themes are you interested in?")
 
-# Apply caching to the analyze_text function
-@st.cache(show_spinner=False, hash_funcs={openai.api_resources.abstract.EngineAPICollection: lambda _: None})
 def analyze_text(text, questions):
     # Incorporate guiding questions into the analysis request
     messages = [
