@@ -9,7 +9,7 @@ from collections import defaultdict
 # OpenAI API Call
 def query_openai(api_key, messages):
     openai.api_key = api_key  # Utilizing the passed api_key
-    response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+    response = openai.ChatCompletion.create(model="gpt-4", messages=messages)
     return response.choices[0].message["content"]
 
 # Text Extraction Functions
