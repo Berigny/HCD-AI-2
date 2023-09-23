@@ -5,12 +5,15 @@ from pptx import Presentation
 import re
 import os
 import openai
+from docx import Document
 
+# OpenAI API Call
 def query_openai(api_key, messages):
     openai.api_key = api_key
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response.choices[0].message["content"]
 
+# Text Extraction Functions
 def extract_text_from_txt(file):
     try:
         return file.getvalue().decode('utf-8')
@@ -66,47 +69,10 @@ def extract_text(uploaded_file):
         st.error(f"Error processing {uploaded_file.name}. Error: {e}")
         return None
 
-def find_keyword_in_text(keyword, text):
-    matches = re.finditer(keyword, text, re.IGNORECASE)
-    snippets = []
-    for match in matches:
-        start_index = max(0, match.start() - SNIPPET_LENGTH)
-        end_index = min(len(text), match.end() + SNIPPET_LENGTH)
-        snippet = text[start_index:end_index]
-        snippets.append(snippet)
-    return snippets
-
-def extract_insights(text):
-    insights = ""
-    segments = text.split('. ')  # Split by sentences
-
-    # Join sentences until they approach the segment size
-    i = 0
-    while i < len(segments):
-        segment = segments[i]
-        while len(segment) < SEGMENT_SIZE and i < len(segments) - 1:
-            i += 1
-            segment += ". " + segments[i]
-
-        try:
-            response = openai.Completion.create(
-                model="text-davinci-003",
-                prompt=f"Provide insights on the following transcript segment: {segment}",
-                max_tokens=MAX_TOKENS
-            )
-            insights += response.choices[0].text.strip() + " "
-        except Exception as e:
-            st.error(f"OpenAI API error: {e}")
-
-        i += 1
-
-    return insights.strip()
-
 # Constants
 MAX_TOKENS = 200
-SEGMENT_SIZE = 1000
-SNIPPET_LENGTH = 50
 
+# Streamlit Interface
 st.title("Transcript Analysis Tool")
 
 api_key = st.text_input("API Key", type="password")
@@ -117,42 +83,67 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
-# New file size check and filtering
-accepted_files = [file for file in uploaded_files if file.size <= 10e6]  # 10 MB limit
-rejected_files = [file for file in uploaded_files if file.size > 10e6]
-
-for rejected_file in rejected_files:
-    st.error(f"{rejected_file.name} is too large. Please upload smaller files.")
+accepted_files = uploaded_files  # Assuming all files are accepted for simplicity
 
 guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
 
+# Extracting Insights and Summarizing
+def extract_insights(text):
+    try:
+        response = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=f"Summarize the following text and identify customer segments, pain points, and opportunities: {text}",
+            max_tokens=MAX_TOKENS
+        )
+        insights = response.choices[0].text.strip()
+        return insights
+    except Exception as e:
+        st.error(f"OpenAI API error: {e}")
+
+def generate_summary(insight):
+    try:
+        response = openai.Completion.create(
+            model="text-davinci-003",
+            prompt=f"Expand on the following insight: {insight}",
+            max_tokens=MAX_TOKENS
+        )
+        summary = response.choices[0].text.strip()
+        return summary
+    except Exception as e:
+        st.error(f"OpenAI API error: {e}")
+
+# Submit button action
 if st.button("Submit", key='submit') and guiding_questions:
-    # Dictionary to store text content for each accepted file
-    file_contents = {}
+    file_contents = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
 
-    if accepted_files:
-        with st.expander("Uploaded Files & Previews"):
-            for accepted_file in accepted_files:
-                text_content = extract_text(accepted_file)
-                file_contents[accepted_file.name] = text_content
-                st.write(f"Contents of {accepted_file.name}: {text_content[:500]}...")
-
-        with st.expander("Keyword Matches"):
-            keywords = [keyword.strip() for keyword in guiding_questions.split(",")]
-
-            for keyword in keywords:
-                for file_name, text_content in file_contents.items():
-                    snippets = find_keyword_in_text(keyword, text_content)
-                    if snippets:
-                        st.write(f"Found {len(snippets)} instances of '{keyword}' in {file_name}:")
-                        for snippet in snippets:
-                            st.write(f"...{snippet}...")
-
-    # Display insights
-    with st.expander("Extracted Insights"):
+    with st.expander("Consolidated Insights & Summaries"):
         for file_name, text_content in file_contents.items():
             insights = extract_insights(text_content)
             st.write(f"Insights from {file_name}:")
             st.write(insights)
-else:
-    st.warning("Please enter guiding questions and click submit to initiate the extraction process.")
+            summary = generate_summary(insights)
+            st.write(f"Expanded Summary for {file_name}:")
+            st.write(summary)
+
+# Exporting Findings
+def export_findings(findings_dict):
+    doc = Document()
+    doc.add_heading('Consolidated Findings', 0)
+
+    for file_name, insights in findings_dict.items():
+        doc.add_heading(file_name, level=1)
+        doc.add_paragraph(insights)
+
+    doc_path = 'findings.docx'
+    doc.save(doc_path)
+    return doc_path
+
+if st.button("Export Findings"):
+    findings_dict = {file_name: extract_insights(text_content) for file_name, text_content in file_contents.items()}
+    doc_path = export_findings(findings_dict)
+    st.download_button(
+        label="Download Findings",
+        data=open(doc_path, "rb"),
+        file_name='findings.docx',
+        mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
