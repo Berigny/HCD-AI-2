@@ -7,7 +7,7 @@ import openai
 # Define function to handle OpenAI API calls
 def query_openai(api_key, messages):
     openai.api_key = api_key
-    response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+    response = openai.ChatCompletion.create(model="gpt-4", messages=messages)
     return response.choices[0].message["content"]
 
 # Text extraction functions for different file types
@@ -96,7 +96,9 @@ if st.button("Submit") and uploaded_files:
 
         # Assume the analysis result is formatted with newline separation for each section
         sections = analysis_result.split('\n')
-        summary, customer_segments, pain_points, opportunities, insights = sections[:5]
+        
+        # Updated unpacking line
+        summary, customer_segments, pain_points, opportunities, insights = (sections + [None]*5)[:5]
 
         # Display each section of the analysis result in separate accordions
         with st.expander("Summary"):
