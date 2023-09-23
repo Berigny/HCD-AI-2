@@ -79,7 +79,7 @@ def find_keyword_in_text(keyword, text):
 def extract_insights(text):
     insights = ""
     segments = text.split('. ')  # Split by sentences
-    
+
     # Join sentences until they approach the segment size
     i = 0
     while i < len(segments):
@@ -87,7 +87,7 @@ def extract_insights(text):
         while len(segment) < SEGMENT_SIZE and i < len(segments) - 1:
             i += 1
             segment += ". " + segments[i]
-        
+
         try:
             response = openai.Completion.create(
                 model="text-davinci-003",
@@ -97,9 +97,9 @@ def extract_insights(text):
             insights += response.choices[0].text.strip() + " "
         except Exception as e:
             st.error(f"OpenAI API error: {e}")
-        
+
         i += 1
-    
+
     return insights.strip()
 
 # Constants
@@ -109,7 +109,7 @@ SNIPPET_LENGTH = 50
 
 st.title("Transcript Analysis Tool")
 
-api_key = st.text_input("API Key", type="password")  # Moved API Key input here
+api_key = st.text_input("API Key", type="password")
 
 uploaded_files = st.file_uploader(
     "Choose transcript files (.txt, .docx, .pdf, .ppt)",
@@ -126,31 +126,33 @@ for rejected_file in rejected_files:
 
 guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
 
-# Dictionary to store text content for each accepted file
-file_contents = {}
+if st.button("Submit", key='submit') and guiding_questions:
+    # Dictionary to store text content for each accepted file
+    file_contents = {}
 
-if accepted_files:
-    with st.expander("Uploaded Files & Previews"):  # Updated to use expander
-        for accepted_file in accepted_files:
-            text_content = extract_text(accepted_file)
-            file_contents[accepted_file.name] = text_content
-            st.write(f"Contents of {accepted_file.name}: {text_content[:500]}...")
+    if accepted_files:
+        with st.expander("Uploaded Files & Previews"):
+            for accepted_file in accepted_files:
+                text_content = extract_text(accepted_file)
+                file_contents[accepted_file.name] = text_content
+                st.write(f"Contents of {accepted_file.name}: {text_content[:500]}...")
 
-if guiding_questions:
-    with st.expander("Keyword Matches"):
-        keywords = [keyword.strip() for keyword in guiding_questions.split(",")]
+        with st.expander("Keyword Matches"):
+            keywords = [keyword.strip() for keyword in guiding_questions.split(",")]
 
-        for keyword in keywords:
-            for file_name, text_content in file_contents.items():
-                snippets = find_keyword_in_text(keyword, text_content)
-                if snippets:
-                    st.write(f"Found {len(snippets)} instances of '{keyword}' in {file_name}:")
-                    for snippet in snippets:
-                        st.write(f"...{snippet}...")
+            for keyword in keywords:
+                for file_name, text_content in file_contents.items():
+                    snippets = find_keyword_in_text(keyword, text_content)
+                    if snippets:
+                        st.write(f"Found {len(snippets)} instances of '{keyword}' in {file_name}:")
+                        for snippet in snippets:
+                            st.write(f"...{snippet}...")
 
-# Display insights
-with st.expander("Extracted Insights"):
-    for file_name, text_content in file_contents.items():
-        insights = extract_insights(text_content)
-        st.write(f"Insights from {file_name}:")
-        st.write(insights)
+    # Display insights
+    with st.expander("Extracted Insights"):
+        for file_name, text_content in file_contents.items():
+            insights = extract_insights(text_content)
+            st.write(f"Insights from {file_name}:")
+            st.write(insights)
+else:
+    st.warning("Please enter guiding questions and click submit to initiate the extraction process.")
