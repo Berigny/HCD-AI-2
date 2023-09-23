@@ -2,10 +2,10 @@ import streamlit as st
 import docx
 import PyPDF2
 from pptx import Presentation
-import re
 import os
 import openai
 from docx import Document
+from collections import defaultdict
 
 # OpenAI API Call
 def query_openai(api_key, messages):
@@ -83,18 +83,20 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
-accepted_files = uploaded_files  # Assuming all files are accepted for simplicity
-
 guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
 
-# Extracting Insights and Summarizing
+# Adding Streamlit caching to store the results of API calls
+@st.cache(allow_output_mutation=True)
 def extract_insights(text):
     try:
+        # Trim the text if it's too long (simple example, you may want to summarize instead)
+        trimmed_text = text[:4096]  # This is a naive trim, you might want to trim in a more intelligent way
+        
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
             {
                 "role": "user",
-                "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {text}"
+                "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {trimmed_text}"
             }
         ]
         insights = query_openai(api_key, messages)  # updated line
@@ -102,6 +104,7 @@ def extract_insights(text):
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
 
+@st.cache(allow_output_mutation=True)
 def generate_summary(insight):
     try:
         messages = [
@@ -113,18 +116,24 @@ def generate_summary(insight):
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
 
+file_contents = defaultdict(str)  # updated to default dict for error handling
+
 # Submit button action
 if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
-    file_contents = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
+    with st.spinner('Processing...'):  # Loading wheel during processing
+        accepted_files = uploaded_files
+        file_contents = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
 
-    with st.expander("Consolidated Insights & Summaries"):
-        for file_name, text_content in file_contents.items():
-            insights = extract_insights(text_content)
-            st.write(f"Insights from {file_name}:")
-            st.write(insights)
-            summary = generate_summary(insights)
-            st.write(f"Expanded Summary for {file_name}:")
-            st.write(summary)
+        with st.expander("Consolidated Insights & Summaries"):
+            for file_name, text_content in file_contents.items():
+                insights = extract_insights(text_content)
+                st.write(f"Insights from {file_name}:")
+                st.write(insights)
+                summary = generate_summary(insights)
+                st.write(f"Expanded Summary for {file_name}:")
+                st.write(summary)
+        st.success('Processing complete!')  # Notify user of completion
+        st.session_state['processing_complete'] = True  # Set session state
 
 # Exporting Findings
 def export_findings(findings_dict):
@@ -139,12 +148,13 @@ def export_findings(findings_dict):
     doc.save(doc_path)
     return doc_path
 
-if st.button("Export Findings") and uploaded_files:
+if 'processing_complete' in st.session_state and st.button("Export Findings"):
     findings_dict = {file_name: extract_insights(text_content) for file_name, text_content in file_contents.items()}
     doc_path = export_findings(findings_dict)
-    st.download_button(
-        label="Download Findings",
-        data=open(doc_path, "rb"),
-        file_name='findings.docx',
-        mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-    )
+    with open(doc_path, "rb") as file:
+        st.download_button(
+            label="Download Findings",
+            data=file.read(),
+            file_name='findings.docx',
+            mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
