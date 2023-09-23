@@ -2,7 +2,6 @@ import streamlit as st
 import docx
 import PyPDF2
 from pptx import Presentation
-import os
 import openai
 from docx import Document
 from collections import defaultdict
@@ -69,23 +68,8 @@ def extract_text(uploaded_file):
         st.error(f"Error processing {uploaded_file.name}. Error: {e}")
         return None
 
-# Constants
-MAX_TOKENS = 200
-
-# Streamlit Interface
-st.title("Transcript Analysis Tool")
-
-api_key = st.text_input("API Key", type="password")
-
-uploaded_files = st.file_uploader(
-    "Choose transcript files (.txt, .docx, .pdf, .ppt)",
-    type=["txt", "docx", "pdf", "ppt"],
-    accept_multiple_files=True,
-)
-
-guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
-
 # Adding Streamlit caching to store the results of API calls
+@st.cache(allow_output_mutation=True)
 def extract_insights(text):
     try:
         # Trim the text if it's too long
@@ -107,8 +91,6 @@ def extract_insights(text):
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
 
-
-
 @st.cache(allow_output_mutation=True)
 def generate_summary(insight):
     try:
@@ -121,26 +103,6 @@ def generate_summary(insight):
     except Exception as e:
         st.error(f"OpenAI API error: {e}")
 
-file_contents = defaultdict(str)  # updated to default dict for error handling
-
-# Submit button action
-if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
-    with st.spinner('Processing...'):  # Loading wheel during processing
-        accepted_files = uploaded_files
-        file_contents = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
-
-        with st.expander("Consolidated Insights & Summaries"):
-            for file_name, text_content in file_contents.items():
-                insights = extract_insights(text_content)
-                st.write(f"Insights from {file_name}:")
-                st.write(insights)
-                summary = generate_summary(insights)
-                st.write(f"Expanded Summary for {file_name}:")
-                st.write(summary)
-        st.success('Processing complete!')  # Notify user of completion
-        st.session_state['processing_complete'] = True  # Set session state
-
-# Exporting Findings
 def export_findings(findings_dict):
     doc = Document()
     doc.add_heading('Consolidated Findings', 0)
@@ -153,13 +115,46 @@ def export_findings(findings_dict):
     doc.save(doc_path)
     return doc_path
 
-if 'processing_complete' in st.session_state and st.button("Export Findings"):
-    findings_dict = {file_name: extract_insights(text_content) for file_name, text_content in file_contents.items()}
-    doc_path = export_findings(findings_dict)
-    with open(doc_path, "rb") as file:
+# Streamlit Interface
+st.title("Transcript Analysis Tool")
+
+api_key = st.text_input("API Key", type="password")
+
+uploaded_files = st.file_uploader(
+    "Choose transcript files (.txt, .docx, .pdf, .ppt)",
+    type=["txt", "docx", "pdf", "ppt"],
+    accept_multiple_files=True,
+)
+
+accepted_files = uploaded_files  # Assuming all files are accepted for simplicity
+
+if 'file_contents' not in st.session_state:
+    st.session_state['file_contents'] = {}
+
+if accepted_files and not st.session_state['file_contents']:
+    st.session_state['file_contents'] = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
+
+guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
+
+if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
+    with st.spinner("Processing..."):
+        with st.expander("Consolidated Insights & Summaries"):
+            for file_name, text_content in st.session_state['file_contents'].items():
+                insights = extract_insights(text_content)
+                st.write(f"Insights from {file_name}:")
+                st.write(insights)
+                summary = generate_summary(insights)
+                st.write(f"Expanded Summary for {file_name}:")
+                st.write(summary)
+        st.session_state['processing_complete'] = True
+
+if 'processing_complete' in st.session_state and st.session_state['processing_complete']:
+    if st.button("Export Findings"):
+        findings_dict = {file_name: extract_insights(text_content) for file_name, text_content in st.session_state['file_contents'].items()}
+        doc_path = export_findings(findings_dict)
         st.download_button(
             label="Download Findings",
-            data=file.read(),
+            data=open(doc_path, "rb"),
             file_name='findings.docx',
             mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         )
