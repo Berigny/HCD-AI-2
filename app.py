@@ -4,71 +4,52 @@ import PyPDF2
 from pptx import Presentation
 import openai
 
+# Define constants
+SEGMENT_SIZE = 1000  # Define this constant as per your requirements
+
 # Define function to handle OpenAI API calls
 def query_openai(api_key, messages):
     openai.api_key = api_key
     response = openai.ChatCompletion.create(model="gpt-4", messages=messages)
     return response.choices[0].message["content"]
 
-# Text extraction functions for different file types
-def extract_text_from_txt(file):
-    return file.getvalue().decode('utf-8')
-
-def extract_text_from_docx(file):
-    doc = docx.Document(file)
-    return ' '.join([para.text for para in doc.paragraphs])
-
-def extract_text_from_pdf(file):
-    pdf_reader = PyPDF2.PdfFileReader(file)
-    text = ""
-    for page_num in range(pdf_reader.numPages):
-        text += pdf_reader.getPage(page_num).extractText()
-    return text
-
-def extract_text_from_ppt(file):
-    prs = Presentation(file)
-    text = ""
-    for slide in prs.slides:
-        for shape in slide.shapes:
-            if hasattr(shape, "text"):
-                text += shape.text
-    return text
-
-# Function to extract text based on file type
-def extract_text(uploaded_file):
-    if uploaded_file.type == "text/plain":
-        return extract_text_from_txt(uploaded_file)
-    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-        return extract_text_from_docx(uploaded_file)
-    elif uploaded_file.type == "application/pdf":
-        return extract_text_from_pdf(uploaded_file)
-    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-        return extract_text_from_ppt(uploaded_file)
-    else:
-        st.error(f"File type not supported: {uploaded_file.type}")
+# ... (rest of the text extraction functions here)
 
 # Function to extract insights from text
-def extract_insights(text, guiding_questions):
-    try:
-        # Trim the text if it's too long
-        if len(text) > 4000:
-            trimmed_text = text[:4000]  # This is a naive trim
-            st.warning("The text has been truncated for analysis.")
-        else:
-            trimmed_text = text
-
+def extract_insights(api_key, text):
+    insights = ""
+    segments = text.split('. ')  # Split by sentences
+    
+    # Function to handle OpenAI API calls
+    def query_openai(segment):
+        # Truncate the segment if it's too long
+        MAX_CHAR_LIMIT = 4000  # Set based on OpenAI's max tokens limit
+        truncated_segment = segment[:MAX_CHAR_LIMIT]
+        if len(segment) > MAX_CHAR_LIMIT:
+            st.warning(f"A segment was truncated from {len(segment)} to {len(truncated_segment)} characters.")
         messages = [
             {"role": "system", "content": "You are a helpful assistant."},
-            {
-                "role": "user",
-                "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {trimmed_text}"
-            },
-            {"role": "user", "content": f"Guiding questions: {guiding_questions}"}
+            {"role": "user", "content": f"Provide insights on the following transcript segment: {truncated_segment}"}
         ]
-        insights = query_openai(api_key, messages)  # updated line
-        return insights
-    except Exception as e:
-        st.error(f"OpenAI API error: {e}")
+        return query_openai(api_key, messages)
+    
+    # Join sentences until they approach the segment size
+    i = 0
+    while i < len(segments):
+        segment = segments[i]
+        while len(segment) < SEGMENT_SIZE and i < len(segments) - 1:
+            i += 1
+            segment += ". " + segments[i]
+        
+        try:
+            insight_segment = query_openai(segment)
+            insights += insight_segment.strip() + " "
+        except Exception as e:
+            st.error(f"OpenAI API error: {e}")
+        
+        i += 1
+    
+    return insights.strip()
 
 # Streamlit app UI
 st.title("Transcript Analysis Tool")
@@ -90,7 +71,7 @@ if st.button("Submit") and uploaded_files:
         consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
         # Get analysis result
-        analysis_result = extract_insights(consolidated_text, guiding_questions)
+        analysis_result = extract_insights(api_key, consolidated_text)
 
         st.write(f"Debug: {analysis_result}")  # add this line to see what's in analysis_result
 
