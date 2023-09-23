@@ -58,13 +58,25 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
+# Apply caching to the analyze_text function
+@st.cache(show_spinner=False)
+def analyze_text(text):
+    # Assume a function to analyze text and return the formatted result
+    # Replace with your actual analysis logic
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}"}
+    ]
+    analysis = query_openai(api_key, messages)
+    return analysis
+
 # Button to initiate the analysis
 if st.button("Submit") and uploaded_files:
     with st.spinner("Processing..."):
         # Concatenate all text from uploaded documents
         consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
-        # Assume a function analyze_text exists to analyze the consolidated text
+        # Get analysis result
         analysis_result = analyze_text(consolidated_text)
         
         # Assume the analysis result is formatted with newline separation for each section
@@ -85,13 +97,3 @@ if st.button("Submit") and uploaded_files:
 
         with st.expander("Insights"):
             st.write(insights)
-
-def analyze_text(text):
-    # Assume a function to analyze text and return the formatted result
-    # Replace with your actual analysis logic
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}"}
-    ]
-    analysis = query_openai(api_key, messages)
-    return analysis
