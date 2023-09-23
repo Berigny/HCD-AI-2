@@ -3,119 +3,51 @@ import docx
 import PyPDF2
 from pptx import Presentation
 import openai
-from docx import Document
-from collections import defaultdict
 
-# OpenAI API Call
+# Define function to handle OpenAI API calls
 def query_openai(api_key, messages):
-    openai.api_key = api_key  # Utilizing the passed api_key
+    openai.api_key = api_key
     response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
     return response.choices[0].message["content"]
 
-# Text Extraction Functions
+# Text extraction functions for different file types
 def extract_text_from_txt(file):
-    try:
-        return file.getvalue().decode('utf-8')
-    except Exception as e:
-        st.error(f"Error processing text file. Error: {e}")
-        return None
+    return file.getvalue().decode('utf-8')
 
 def extract_text_from_docx(file):
-    try:
-        doc = docx.Document(file)
-        return ' '.join([para.text for para in doc.paragraphs])
-    except Exception as e:
-        st.error(f"Error processing docx file. Error: {e}")
-        return None
+    doc = docx.Document(file)
+    return ' '.join([para.text for para in doc.paragraphs])
 
 def extract_text_from_pdf(file):
-    try:
-        pdf_reader = PyPDF2.PdfFileReader(file)
-        text = ""
-        for page_num in range(pdf_reader.numPages):
-            text += pdf_reader.getPage(page_num).extractText()
-        return text
-    except Exception as e:
-        st.error(f"Error processing pdf file. Error: {e}")
-        return None
+    pdf_reader = PyPDF2.PdfFileReader(file)
+    text = ""
+    for page_num in range(pdf_reader.numPages):
+        text += pdf_reader.getPage(page_num).extractText()
+    return text
 
 def extract_text_from_ppt(file):
-    try:
-        prs = Presentation(file)
-        text = ""
-        for slide in prs.slides:
-            for shape in slide.shapes:
-                if hasattr(shape, "text"):
-                    text += shape.text
-        return text
-    except Exception as e:
-        st.error(f"Error processing ppt file. Error: {e}")
-        return None
+    prs = Presentation(file)
+    text = ""
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            if hasattr(shape, "text"):
+                text += shape.text
+    return text
 
+# Function to extract text based on file type
 def extract_text(uploaded_file):
-    try:
-        if uploaded_file.type == "text/plain":
-            return extract_text_from_txt(uploaded_file)
-        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-            return extract_text_from_docx(uploaded_file)
-        elif uploaded_file.type == "application/pdf":
-            return extract_text_from_pdf(uploaded_file)
-        elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-            return extract_text_from_ppt(uploaded_file)
-        else:
-            return None
-    except Exception as e:
-        st.error(f"Error processing {uploaded_file.name}. Error: {e}")
-        return None
+    if uploaded_file.type == "text/plain":
+        return extract_text_from_txt(uploaded_file)
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        return extract_text_from_docx(uploaded_file)
+    elif uploaded_file.type == "application/pdf":
+        return extract_text_from_pdf(uploaded_file)
+    elif uploaded_file.type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+        return extract_text_from_ppt(uploaded_file)
+    else:
+        st.error(f"File type not supported: {uploaded_file.type}")
 
-# Adding Streamlit caching to store the results of API calls
-@st.cache(allow_output_mutation=True)
-def extract_insights(text):
-    try:
-        # Trim the text if it's too long
-        if len(text) > 4000:
-            trimmed_text = text[:4000]  # This is a naive trim
-            st.warning("The text has been truncated for analysis.")
-        else:
-            trimmed_text = text
-
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {
-                "role": "user",
-                "content": f"Summarize the following text and identify customer segments, pain points, and opportunities: {trimmed_text}"
-            }
-        ]
-        insights = query_openai(api_key, messages)  # updated line
-        return insights
-    except Exception as e:
-        st.error(f"OpenAI API error: {e}")
-
-@st.cache(allow_output_mutation=True)
-def generate_summary(insight):
-    try:
-        messages = [
-            {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": f"Expand on the following insight: {insight}"}
-        ]
-        summary = query_openai(api_key, messages)  # updated line
-        return summary
-    except Exception as e:
-        st.error(f"OpenAI API error: {e}")
-
-def export_findings(findings_dict):
-    doc = Document()
-    doc.add_heading('Consolidated Findings', 0)
-
-    for file_name, insights in findings_dict.items():
-        doc.add_heading(file_name, level=1)
-        doc.add_paragraph(insights)
-
-    doc_path = 'findings.docx'
-    doc.save(doc_path)
-    return doc_path
-
-# Streamlit Interface
+# Streamlit app UI
 st.title("Transcript Analysis Tool")
 
 api_key = st.text_input("API Key", type="password")
@@ -126,35 +58,40 @@ uploaded_files = st.file_uploader(
     accept_multiple_files=True,
 )
 
-accepted_files = uploaded_files  # Assuming all files are accepted for simplicity
-
-if 'file_contents' not in st.session_state:
-    st.session_state['file_contents'] = {}
-
-if accepted_files and not st.session_state['file_contents']:
-    st.session_state['file_contents'] = {accepted_file.name: extract_text(accepted_file) for accepted_file in accepted_files}
-
-guiding_questions = st.text_area("Enter the guiding questions or keywords (separated by commas)")
-
-if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
+# Button to initiate the analysis
+if st.button("Submit") and uploaded_files:
     with st.spinner("Processing..."):
-        with st.expander("Consolidated Insights & Summaries"):
-            for file_name, text_content in st.session_state['file_contents'].items():
-                insights = extract_insights(text_content)
-                st.write(f"Insights from {file_name}:")
-                st.write(insights)
-                summary = generate_summary(insights)
-                st.write(f"Expanded Summary for {file_name}:")
-                st.write(summary)
-        st.session_state['processing_complete'] = True
+        # Concatenate all text from uploaded documents
+        consolidated_text = " ".join([extract_text(file) for file in uploaded_files])
 
-if 'processing_complete' in st.session_state and st.session_state['processing_complete']:
-    if st.button("Export Findings"):
-        findings_dict = {file_name: extract_insights(text_content) for file_name, text_content in st.session_state['file_contents'].items()}
-        doc_path = export_findings(findings_dict)
-        st.download_button(
-            label="Download Findings",
-            data=open(doc_path, "rb"),
-            file_name='findings.docx',
-            mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-        )
+        # Assume a function analyze_text exists to analyze the consolidated text
+        analysis_result = analyze_text(consolidated_text)
+        
+        # Assume the analysis result is formatted with newline separation for each section
+        summary, customer_segments, pain_points, opportunities, insights = analysis_result.split('\n')
+
+        # Display each section of the analysis result in separate accordions
+        with st.expander("Summary"):
+            st.write(summary)
+
+        with st.expander("Customer Segments"):
+            st.write(customer_segments)
+
+        with st.expander("Pain Points"):
+            st.write(pain_points)
+
+        with st.expander("Opportunities"):
+            st.write(opportunities)
+
+        with st.expander("Insights"):
+            st.write(insights)
+
+def analyze_text(text):
+    # Assume a function to analyze text and return the formatted result
+    # Replace with your actual analysis logic
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Perform a thematic analysis on the following text: {text}"}
+    ]
+    analysis = query_openai(api_key, messages)
+    return analysis
