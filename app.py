@@ -20,7 +20,7 @@ def query_openai(api_key, messages):
 SEGMENT_SIZE = 3500  
 
 # Function to extract insights from text
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def extract_insights(api_key, text):
     insights = ""
     segments = text.split('. ')
@@ -42,7 +42,7 @@ def extract_insights(api_key, text):
         i += 1
     return insights.strip()
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def generate_summary(api_key, insight):
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
@@ -51,7 +51,7 @@ def generate_summary(api_key, insight):
     summary = query_openai(api_key, messages)
     return summary
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def process_uploaded_files(uploaded_files):
     file_contents = {}
     for uploaded_file in uploaded_files:
@@ -89,11 +89,11 @@ uploaded_files = st.file_uploader(
 if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
     st.session_state['file_contents'] = process_uploaded_files(uploaded_files)
     with st.spinner("Processing..."):
-        with st.expander("Consolidated Insights & Summaries"):
-            for file_name, text_content in st.session_state['file_contents'].items():
-                with st.expander(f"Insights from {file_name}"):
-                    insights = extract_insights(api_key, text_content)
-                    st.markdown(insights)
+        insights_expander = st.expander("Consolidated Insights & Summaries")
+        for file_name, text_content in st.session_state['file_contents'].items():
+            insights = extract_insights(api_key, text_content)
+            insights_expander.write(f"Insights from {file_name}:")
+            insights_expander.markdown(insights)
         st.session_state['processing_complete'] = True
 
         with st.expander("Summary"):
