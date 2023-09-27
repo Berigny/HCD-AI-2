@@ -9,10 +9,10 @@ from collections import defaultdict
 def query_openai(api_key, messages):
     openai.api_key = api_key
     response = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=messages,
         temperature=0.7,
-        max_tokens=150
+        max_tokens=50
     )
     return response.choices[0].message["content"]
 
