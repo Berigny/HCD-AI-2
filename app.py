@@ -42,6 +42,16 @@ def extract_insights(api_key, text):
         i += 1
     return insights.strip()
 
+# Your existing imports and functions remain unchanged
+
+def identify_common_insights(api_key, aggregated_insights):
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": f"Identify common themes or insights from the following insights: {aggregated_insights}"}
+    ]
+    common_insights = query_openai(api_key, messages)
+    return common_insights
+
 @st.cache(allow_output_mutation=True)
 def generate_summary(api_key, insight):
     messages = [
@@ -88,13 +98,16 @@ uploaded_files = st.file_uploader(
 if st.button("Submit", key='submit') and guiding_questions and uploaded_files:
     st.session_state['file_contents'] = process_uploaded_files(uploaded_files)
     with st.spinner("Processing..."):
+        aggregated_insights = ""
         with st.expander("Consolidated Insights & Summaries"):
             for file_name, text_content in st.session_state['file_contents'].items():
                 insights = extract_insights(api_key, text_content)
+                aggregated_insights += insights + " "
                 st.write(f"Insights from {file_name}:")
                 st.write(insights)
+        
         st.session_state['processing_complete'] = True
 
-        with st.expander("Summary"):
-            summary = generate_summary(api_key, insights)
-            st.write(summary) 
+        with st.expander("Common Themes or Insights"):
+            common_insights = identify_common_insights(api_key, aggregated_insights)
+            st.write(common_insights)
