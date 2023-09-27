@@ -20,7 +20,7 @@ def query_openai(api_key, messages):
 SEGMENT_SIZE = 3500  
 
 # Function to extract insights from text
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def extract_insights(api_key, text):
     insights = ""
     segments = text.split('. ')
@@ -52,7 +52,7 @@ def identify_common_insights(api_key, aggregated_insights):
     common_insights = query_openai(api_key, messages)
     return common_insights
 
-@st.cache(allow_output_mutation=True)
+@st.cache_data
 def generate_summary(api_key, insight):
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
