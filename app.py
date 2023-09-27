@@ -46,7 +46,7 @@ def extract_insights(api_key, text):
 def generate_summary(api_key, insight):
     messages = [
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": f"Summarize the following insights: {insight}"}
+        {"role": "user", "content": f"Given the definition of insights in HCD, provide insights on the following transcript segment based on uncovering hidden needs, identifying patterns, and understanding context: {segment}"}
     ]
     summary = query_openai(api_key, messages)
     return summary
